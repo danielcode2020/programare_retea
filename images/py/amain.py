@@ -2,6 +2,7 @@ import socket
 from urllib.parse import urlparse
 import re
 import sys
+import ssl
 # host = 'me.utm.md'
 print("port %s" % (sys.argv[1]))
 print("host %s" % (sys.argv[2]))
@@ -12,6 +13,9 @@ host = (sys.argv[2])
 link = (sys.argv[3])
 filename = (sys.argv[4])
 sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+if port == 443:
+    context = ssl.create_default_context()
+    sock = context.wrap_socket(sock, server_hostname=host)
 server_address = (host, port)
 sock.connect(server_address)
 url = urlparse(link)

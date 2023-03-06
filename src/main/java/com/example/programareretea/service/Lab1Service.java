@@ -5,11 +5,11 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 
+import javax.net.ssl.SSLSocket;
+import javax.net.ssl.SSLSocketFactory;
 import java.io.*;
 import java.net.Socket;
-import java.net.URL;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -23,9 +23,14 @@ public class Lab1Service {
 
     private final Logger log = LoggerFactory.getLogger(Lab1Service.class);
 
-
     public void request(PortHostDto dto) throws InterruptedException, IOException {
-        String responseHTML = getResponse(dto);
+        String responseHTML;
+        if (dto.port().equals(443)){
+            responseHTML = getResponseSecured(dto);
+        }
+        else {
+            responseHTML = getResponse(dto);
+        }
         Semaphore semaphore = new Semaphore(2);
         ExecutorService exec = Executors.newFixedThreadPool(4);
 
@@ -89,6 +94,7 @@ public class Lab1Service {
             serverResponse += (char) c;
         }
         socket.close();
+//        log.info(serverResponse);
         log.error("Server response");
         return serverResponse;
     }
@@ -111,5 +117,40 @@ public class Lab1Service {
         log.info("\n" +response);
         return response;
     }
+
+    private String getResponseSecured(PortHostDto dto) {
+        String serverResponse = "";
+        try {
+            SSLSocketFactory factory = (SSLSocketFactory) SSLSocketFactory.getDefault();
+            SSLSocket socket = (SSLSocket) factory.createSocket(dto.host(), dto.port());
+            socket.startHandshake();
+
+            PrintWriter outWriter = new PrintWriter(
+                    new BufferedWriter(
+                            new OutputStreamWriter(
+                                    socket.getOutputStream())));
+
+            outWriter.println(buildRequest(dto.host()));
+            outWriter.flush();
+
+            BufferedReader InputReader = new BufferedReader(
+                    new InputStreamReader(
+                            socket.getInputStream()));
+
+            String inputLine;
+            while ((inputLine = InputReader.readLine()) != null)
+                serverResponse += inputLine + "\n";
+
+            InputReader.close();
+            outWriter.close();
+            socket.close();
+
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        log.info(serverResponse);
+        return serverResponse;
+    }
+
 
 }
